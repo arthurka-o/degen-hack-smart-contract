@@ -7,16 +7,22 @@
 const hre = require("hardhat");
 
 async function main() {
-  const currentTimestampInSeconds = Math.round(Date.now() / 1000);
-  const unlockTime = currentTimestampInSeconds + 60;
+  const depositTreasure = await hre.ethers.deployContract(
+    "DepositTreasure",
+    [],
+    {}
+  );
 
-  const lockedAmount = hre.ethers.parseEther("0.001");
+  const erc20Test = await hre.ethers.deployContract(
+    "ERC20Test",
+    ["Wrapped BTC", "WBTC"],
+    {}
+  );
 
-  const lock = await hre.ethers.deployContract("Lock", [unlockTime], {
-    value: lockedAmount,
-  });
+  await depositTreasure.waitForDeployment();
+  await erc20Test.waitForDeployment();
 
-  await lock.waitForDeployment();
+  await depositTreasure.setToken(erc20Test.address);
 
   console.log(
     `Lock with ${ethers.formatEther(

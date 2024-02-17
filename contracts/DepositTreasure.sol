@@ -3,13 +3,14 @@ pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract DepositTreasure {
     using SafeERC20 for IERC20;
 
     enum DepositStatus {
-        ACTIVE, // 1
-        CLOSED // 2
+        ACTIVE,
+        CLOSED
     }
 
     event DepositCreated(uint _depositID, uint _amount, uint _startTime);
@@ -22,15 +23,23 @@ contract DepositTreasure {
         DepositStatus status;
     }
 
+    address ERC20Address; // wrapped BTC address
+    uint FIVE_YEARS = 5 * 365 days;
+    address ORCALE_ADDRESS = 0x61a598Cd6340B8edcb4faE7Eabcd117Ff371320e;
+
     mapping(uint _id => Deposit _deposit) depositIDToDeposit;
     mapping(uint _id => address _depositor) depositIDToDepositor;
 
     uint depositID = 0;
-    address ERC20Address; // wrapped ETH address
-    uint FIVE_YEARS = 5 * 365 days;
 
-    address oracleAddress;
+    constructor(address _address) {
+        require(_address != address(0), "_address cannot be zero");
 
+        ERC20Address = _address;
+    }
+
+    /// @notice Deposit the wrapped BTC
+    /// @param _amount The amount of wrapped BTC to deposit
     function deposit(uint _amount) public {
         require(
             IERC20(ERC20Address).balanceOf(msg.sender) >= _amount,
@@ -43,12 +52,10 @@ contract DepositTreasure {
             _amount
         );
 
-        uint _currentPrice = getPrice();
-
         Deposit memory _deposit = Deposit(
             _amount,
             block.timestamp,
-            _currentPrice,
+            getPrice(),
             DepositStatus.ACTIVE
         );
 
@@ -59,24 +66,26 @@ contract DepositTreasure {
         emit DepositCreated(depositID, _amount, block.timestamp);
     }
 
+    /// @notice Withdraw the deposit
+    /// @param _depositID The ID of the deposit
     function withdraw(uint _depositID) public {
-        // check for time or price
-        // withdraw to depositor
-        // change status to closed
-
+        // Check if the sender is the depositor
         require(
             depositIDToDepositor[_depositID] == msg.sender,
             "Not the depositor"
         );
+        // Check if the deposit is active
         require(
             depositIDToDeposit[_depositID].status == DepositStatus.ACTIVE,
             "Deposit is not active"
         );
 
+        // Check if five years have passed
         bool _eligibleForWithdrawal = block.timestamp -
             depositIDToDeposit[_depositID].startTime <
             FIVE_YEARS;
 
+        // Check if the price has doubled
         _eligibleForWithdrawal =
             _eligibleForWithdrawal &&
             depositIDToDeposit[_depositID].price * 2 < getPrice();
@@ -100,7 +109,15 @@ contract DepositTreasure {
         );
     }
 
+    /// @notice Get the price of BTC in USD
+    /// @return The price of BTC in USD
     function getPrice() private returns (uint) {
-        // checks oracle for price
+        (bool _success, bytes memory _value) = ORCALE_ADDRESS.call(
+            abi.encodeWithSignature("getValue(string)", "BTC/USD")
+        );
+
+        require(_success, "Oracle call failed");
+
+        return abi.decode(_value, (uint));
     }
 }
