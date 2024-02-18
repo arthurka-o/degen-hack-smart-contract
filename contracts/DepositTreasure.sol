@@ -3,7 +3,12 @@ pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+
+interface DIAOracleV2 {
+    function getValue(
+        string memory _key
+    ) external view returns (uint128, uint128);
+}
 
 contract DepositTreasure {
     using SafeERC20 for IERC20;
@@ -19,7 +24,7 @@ contract DepositTreasure {
     struct Deposit {
         uint value;
         uint startTime;
-        uint price;
+        uint128 price;
         DepositStatus status;
     }
 
@@ -111,13 +116,9 @@ contract DepositTreasure {
 
     /// @notice Get the price of BTC in USD
     /// @return The price of BTC in USD
-    function getPrice() private returns (uint) {
-        (bool _success, bytes memory _value) = ORCALE_ADDRESS.call(
-            abi.encodeWithSignature("getValue(string)", "BTC/USD")
-        );
+    function getPrice() private view returns (uint128) {
+        (uint128 result, ) = DIAOracleV2(ORCALE_ADDRESS).getValue("BTC/USD");
 
-        require(_success, "Oracle call failed");
-
-        return abi.decode(_value, (uint));
+        return result;
     }
 }

@@ -1,34 +1,41 @@
-// We require the Hardhat Runtime Environment explicitly here. This is optional
-// but useful for running the script in a standalone fashion through `node <script>`.
-//
-// You can also run a script with `npx hardhat run <script>`. If you do that, Hardhat
-// will compile your contracts, add the Hardhat Runtime Environment's members to the
-// global scope, and execute the script.
 const hre = require("hardhat");
 
 async function main() {
-  const depositTreasure = await hre.ethers.deployContract(
-    "DepositTreasure",
-    [],
-    {}
-  );
-
+  // Deploy ERC20Test
   const erc20Test = await hre.ethers.deployContract(
     "ERC20Test",
     ["Wrapped BTC", "WBTC"],
     {}
   );
 
-  await depositTreasure.waitForDeployment();
+  const erc20TestAddress = await erc20Test.getAddress();
+
   await erc20Test.waitForDeployment();
+  console.log("ERC20Test deployed to:", erc20TestAddress);
 
-  await depositTreasure.setToken(erc20Test.address);
-
-  console.log(
-    `Lock with ${ethers.formatEther(
-      lockedAmount
-    )}ETH and unlock timestamp ${unlockTime} deployed to ${lock.target}`
+  // Deploy DepositTreasure with ERC20Test address
+  const depositTreasure = await hre.ethers.deployContract(
+    "DepositTreasure",
+    [erc20TestAddress],
+    {}
   );
+  await depositTreasure.waitForDeployment();
+
+  const depositTreasureAddress = await depositTreasure.getAddress();
+
+  console.log("DepositTreasure deployed to:", depositTreasureAddress);
+
+  const deployerAddress = (await hre.ethers.getSigners())[0].address;
+
+  // Mint 1000 WBTC to the deployer
+  await erc20Test.mint(deployerAddress, ethers.parseEther("1000"));
+  // Approve DepositTreasure to spend 1000 WBTC
+  await erc20Test.approve(depositTreasureAddress, ethers.parseEther("1000"));
+
+  await new Promise((r) => setTimeout(r, 5000));
+
+  // Deposit 1000 WBTC to DepositTreasure
+  await depositTreasure.deposit(ethers.parseEther("1000"));
 }
 
 // We recommend this pattern to be able to use async/await everywhere
