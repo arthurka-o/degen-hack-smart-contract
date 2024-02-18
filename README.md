@@ -1,13 +1,11 @@
-# Sample Hardhat Project
+# CryptoPension Contract Repository
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a script that deploys that contract.
+To deploy dummy `ERC20` and `DepositTresure` contracts on Fuse Mainnet:
 
-Try running some of the following tasks:
+1. Create `.env` file with PRIVATE_KEY
+2. Run `yarn`
+3. Run `yarn hardhat run scripts/deploy.js --network fuse`
 
-```shell
-npx hardhat help
-npx hardhat test
-REPORT_GAS=true npx hardhat test
-npx hardhat node
-npx hardhat run scripts/deploy.js
-```
+Local deployment will fail because the oracle address is hardcoded for the Fuse Mainnet.
+
+Tests don't work, I was just curious how GitHub Copilot will generate them from comments (not really good result).
